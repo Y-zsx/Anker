@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANKERHUB - AI Earbuds Simulation Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #111; color: #fff; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+  .phone { width: 375px; height: 812px; background: #000; border-radius: 40px; border: 3px solid #333; overflow: hidden; position: relative; box-shadow: 0 0 60px rgba(0,0,0,0.8); }
+  .notch { width: 150px; height: 28px; background: #000; border-radius: 0 0 18px 18px; position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 10; }
+  .status-bar { display: flex; justify-content: space-between; padding: 8px 24px 4px; font-size: 11px; color: #666; font-weight: 600; }
+  .content { height: calc(100% - 80px - 32px); overflow-y: auto; padding: 0 20px 16px; }
+  .content::-webkit-scrollbar { display: none; }
+  .tab-bar { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around; padding: 8px 8px 24px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,255,255,0.1); }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; border: none; background: none; color: #4b5563; min-width: 48px; }
+  .tab.active { color: #fff; }
+  .tab:hover:not(.active) { color: #9ca3af; }
+  .tab svg { width: 18px; height: 18px; }
+  .tab span { font-size: 10px; }
+  .tab.active::after { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #fff; margin-top: 2px; }
+  h2 { font-size: 12px; font-weight: 500; color: #6b7280; letter-spacing: 0.1em; margin-bottom: 16px; }
+  .card { background: rgba(24,24,27,0.6); border: 1px solid rgba(55,65,81,0.4); border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+  .card-row { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .card-row + .card-row { border-top: 1px solid rgba(55,65,81,0.3); }
+  .card-label { font-size: 13px; color: #d1d5db; display: flex; align-items: center; gap: 8px; }
+  .card-label svg { width: 14px; height: 14px; color: #6b7280; }
+  .card-value { font-size: 12px; color: #6b7280; }
+  .btn { padding: 14px; border-radius: 16px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; }
+  .btn:active { transform: scale(0.98); }
+  .btn-white { background: #fff; color: #000; }
+  .btn-white:hover { background: #e5e7eb; }
+  .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff; }
+  .btn-outline:hover { background: rgba(255,255,255,0.05); }
+  .btn-sm { padding: 8px 16px; border-radius: 12px; font-size: 13px; }
+  .pill-group { display: flex; gap: 6px; margin-bottom: 32px; }
+  .pill { flex: 1; padding: 8px; border-radius: 9999px; font-size: 12px; text-align: center; cursor: pointer; transition: all 0.2s; border: none; background: rgba(24,24,27,0.8); color: #6b7280; }
+  .pill.active { background: #fff; color: #000; font-weight: 500; }
+  .waveform { display: flex; align-items: center; justify-content: center; gap: 1px; height: 64px; margin: 24px 0; padding: 0 8px; }
+  .wave-bar { width: 2px; border-radius: 9999px; transition: height 0.08s; background: rgba(55,65,81,0.6); }
+  .wave-bar.active { background: rgba(255,255,255,0.8); }
+  .timer { font-size: 48px; font-family: monospace; font-weight: 200; text-align: center; color: #fff; letter-spacing: 0.05em; }
+  .timer-sub { text-align: center; font-size: 10px; color: #4b5563; margin-top: 4px; letter-spacing: 0.1em; }
+  .metrics { display: flex; justify-content: center; gap: 32px; margin: 24px 0; }
+  .metric { text-align: center; }
+  .metric-val { font-size: 14px; font-family: monospace; color: #d1d5db; }
+  .metric-label { font-size: 10px; color: #4b5563; }
+  .progress-card { padding: 12px; background: rgba(24,24,27,0.5); border-radius: 12px; margin-top: 12px; }
+  .progress-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .progress-msg { font-size: 12px; color: #9ca3af; flex: 1; }
+  .progress-pct { font-size: 12px; color: #4b5563; font-family: monospace; }
+  .progress-bg { width: 100%; height: 2px; background: rgba(55,65,81,0.8); border-radius: 9999px; overflow: hidden; }
+  .progress-fill { height: 100%; background: rgba(255,255,255,0.6); transition: width 0.3s; border-radius: 9999px; }
+  .result-card { background: rgba(24,24,27,0.5); border-radius: 12px; padding: 16px; margin-bottom: 8px; }
+  .result-title { font-size: 10px; color: #6b7280; letter-spacing: 0.1em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .result-text { font-size: 13px; color: #9ca3af; line-height: 1.6; background: rgba(24,24,27,0.5); padding: 10px; border-radius: 8px; }
+  .record-item { background: rgba(24,24,27,0.4); border: 1px solid rgba(55,65,81,0.4); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; cursor: pointer; }
+  .record-item:hover { background: rgba(24,24,27,0.6); }
+  .record-title { font-size: 13px; color: #d1d5db; }
+  .record-sub { font-size: 10px; color: #4b5563; margin-top: 2px; }
+  .chart-bar-row { margin-bottom: 8px; }
+  .chart-bar-label { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .chart-bar-label span { font-size: 10px; color: #9ca3af; }
+  .chart-bar-label .val { font-size: 10px; color: #d1d5db; font-family: monospace; }
+  .chart-bar-bg { width: 100%; height: 6px; background: rgba(55,65,81,0.8); border-radius: 9999px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; background: rgba(255,255,255,0.6); border-radius: 9999px; transition: width 0.5s; }
+  .accuracy-circle { width: 96px; height: 96px; position: relative; }
+  .accuracy-circle svg { transform: rotate(-90deg); }
+  .accuracy-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .accuracy-text .pct { font-size: 18px; font-weight: 300; color: #fff; }
+  .accuracy-text .label { font-size: 8px; color: #6b7280; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: rgba(24,24,27,0.6); border: 1px solid rgba(55,65,81,0.4); border-radius: 16px; padding: 14px; }
+  .stat-title { font-size: 10px; color: #6b7280; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+  .stat-value { font-size: 20px; font-weight: 300; color: #fff; }
+  .stat-unit { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; text-align: center; }
+  .empty-state svg { width: 32px; height: 32px; color: #1f2937; margin-bottom: 12px; }
+  .empty-state .title { font-size: 14px; color: #4b5563; margin-bottom: 4px; }
+  .empty-state .sub { font-size: 12px; color: #374151; }
+  .section-label { font-size: 10px; color: #4b5563; letter-spacing: 0.1em; margin-bottom: 8px; margin-top: 16px; }
+  .toggle { width: 36px; height: 20px; border-radius: 9999px; position: relative; cursor: pointer; transition: background 0.2s; border: none; }
+  .toggle.on { background: rgba(255,255,255,0.2); }
+  .toggle.off { background: rgba(55,65,81,0.6); }
+  .toggle::after { content: ''; width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; transition: left 0.2s; }
+  .toggle.on::after { right: 2px; }
+  .toggle.off::after { left: 2px; }
+  .home-indicator { width: 134px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 9999px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); }
+  .toast { position: absolute; top: 48px; left: 16px; right: 16px; background: rgba(24,24,27,0.95); border: 1px solid rgba(55,65,81,0.5); border-radius: 16px; padding: 16px; z-index: 20; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .toast-title { font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .toast-text { font-size: 11px; color: #9ca3af; line-height: 1.5; }
+  .toast-close { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #4b5563; cursor: pointer; }
+  .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 30; display: flex; align-items: flex-end; }
+  .modal-sheet { width: 100%; background: rgba(24,24,27,0.98); border-radius: 24px 24px 0 0; padding: 24px 24px 32px; }
+  .modal-handle { width: 32px; height: 4px; background: #374151; border-radius: 9999px; margin: 0 auto 20px; }
+  .modal-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .modal-subtitle { font-size: 10px; color: #6b7280; margin-bottom: 16px; }
+  .modal-items { font-size: 11px; color: #9ca3af; line-height: 2; margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 12px; }
+  .modal-actions .btn { flex: 1; padding: 12px; border-radius: 12px; }
+  .suggestion-item { font-size: 11px; color: #9ca3af; line-height: 1.6; padding: 6px 0; border-bottom: 1px solid rgba(55,65,81,0.2); }
+  .suggestion-item:last-child { border-bottom: none; }
+  .disconnect-modal { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 40; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .disconnect-card { background: rgba(24,24,27,0.98); border-radius: 24px; padding: 24px; width: 100%; max-width: 300px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .disconnect-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(55,65,81,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .disconnect-card h3 { font-size: 14px; color: #fff; margin-bottom: 4px; }
+  .disconnect-card p { font-size: 11px; color: #9ca3af; margin-bottom: 16px; }
+  .export-btns { display: flex; gap: 8px; padding-top: 4px; }
+  .export-btn { flex: 1; padding: 8px; background: rgba(24,24,27,0.6); border: none; border-radius: 8px; font-size: 11px; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .export-btn:hover { color: #fff; }
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+  <div class="notch"></div>
+  <div class="status-bar">
+    <span>ANKERHUB</span>
+    <span id="status-device"></span>
+  </div>
+  <div class="content" id="content"></div>
+  <div class="tab-bar" id="tabbar"></div>
+  <div class="home-indicator"></div>
+  <div id="overlay"></div>
+</div>
+
+<script>
+const TABS = [
+  { key: 'device', label: '设备', icon: 'headphones' },
+  { key: 'listen', label: '聆听', icon: 'mic' },
+  { key: 'results', label: '记录', icon: 'file' },
+  { key: 'report', label: '报告', icon: 'chart' },
+  { key: 'settings', label: '设置', icon: 'settings' }
+];
+
+const ICONS = {
+  headphones: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  zap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
+  battery: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="1" y="6" width="18" height="12" rx="2"/><line x1="23" y1="13" x2="23" y2="11"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+};
+
+// State
+let state = {
+  tab: 'device',
+  connected: false,
+  recording: false,
+  duration: 0,
+  processing: false,
+  progress: 0,
+  records: [],
+  device: null,
+  scenario: 'meeting',
+  showPermission: false,
+  showPrivacyTip: false,
+  showDisconnect: false,
+  toggles: { localOnly: true, analytics: false, autoReconnect: true, notification: true },
+  retention: 30
+};
+
+let timerInterval = null;
+let waveInterval = null;
+let bars = Array(40).fill(4);
+
+function render() {
+  renderTabs();
+  renderPage();
+  renderStatus();
+}
+
+function renderStatus() {
+  const el = document.getElementById('status-device');
+  if (state.connected && state.device) {
+    el.innerHTML = `<span style="color:#4ade80">● ${state.device.battery}%</span>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function renderTabs() {
+  document.getElementById('tabbar').innerHTML = TABS.map(t =>
+    `<button class="tab ${state.tab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">${ICONS[t.icon]}<span>${t.label}</span></button>`
+  ).join('');
+}
+
+function switchTab(key) {
+  state.tab = key;
+  render();
+}
+
+function renderPage() {
+  const c = document.getElementById('content');
+  switch(state.tab) {
+    case 'device': c.innerHTML = pageDevice(); break;
+    case 'listen': c.innerHTML = pageListen(); break;
+    case 'results': c.innerHTML = pageResults(); break;
+    case 'report': c.innerHTML = pageReport(); break;
+    case 'settings': c.innerHTML = pageSettings(); break;
+  }
+}
+
+// ---- Page: Device ----
+function pageDevice() {
+  if (!state.connected) {
+    return `
+      <h2>设备</h2>
+      <div style="text-align:center;padding:40px 0;">
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.03);margin:0 auto 24px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="1.5" width="36" height="36"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+        </div>
+        <p style="font-size:16px;color:#d1d5db;margin-bottom:8px;">未发现已连接设备</p>
+        <p style="font-size:12px;color:#4b5563;margin-bottom:32px;">点击下方按钮搜索并连接耳机</p>
+        <button class="btn btn-white" onclick="connectDevice()">${ICONS.headphones}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>连接设备</button>
+      </div>
+      <div class="card">
+        <div class="card-row"><span class="card-label">${ICONS.wifi} 可用设备</span></div>
+        <div class="card-row"><span class="card-label" style="font-size:12px;">ANKERHUB Pro</span><span class="card-value">未配对</span></div>
+      </div>
+    `;
+  }
+  return `
+    <h2>设备</h2>
+    <div class="card">
+      <div class="card-row"><span class="card-label">${ICONS.headphones} 当前设备</span><span class="card-value" style="color:#d1d5db">${state.device.name}</span></div>
+      <div class="card-row"><span class="card-label">${ICONS.battery} 电量</span><span class="card-value">${state.device.battery}%</span></div>
+      <div class="card-row"><span class="card-label">${ICONS.wifi} 信号强度</span><span class="card-value">${state.device.signal} dBm</span></div>
+      <div class="card-row"><span class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33"/></svg> 固件版本</span><span class="card-value">${state.device.firmware}</span></div>
+      <div class="card-row"><span class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg> 温度</span><span class="card-value">${state.device.temp}°C</span></div>
+      <div class="card-row"><span class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 音频延迟</span><span class="card-value">${state.device.latency}ms</span></div>
+      <div class="card-row"><span class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> 麦克风</span><span class="card-value" style="color:#4ade80">已开启</span></div>
+      <div class="card-row"><button onclick="disconnectDevice()" style="background:none;border:none;color:#f87171;font-size:13px;cursor:pointer;width:100%;text-align:left;padding:0;">断开连接</button></div>
+    </div>
+  `;
+}
+
+function connectDevice() {
+  const phases = ['正在搜索设备...', '正在连接...', '握手验证中...', '连接成功'];
+  let i = 0;
+  const btn = document.querySelector('.btn-white');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  const step = () => {
+    if (i < phases.length) {
+      btn.innerHTML = `<span style="animation:pulse 1s infinite;display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;"></span> ${phases[i]}`;
+      i++;
+      setTimeout(step, 600);
+    } else {
+      state.connected = true;
+      state.device = { name: 'ANKERHUB Pro', battery: 87, signal: -42, firmware: 'v2.1.3', temp: 34, latency: 23, id: 'earbuds_pro_001' };
+      render();
+    }
+  };
+  step();
+}
+
+function disconnectDevice() {
+  state.connected = false;
+  state.device = null;
+  state.showDisconnect = false;
+  hideOverlay();
+  render();
+}
+
+// ---- Page: Listen ----
+function pageListen() {
+  if (!state.connected) {
+    return `
+      <h2>聆听</h2>
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1f2937" stroke-width="1.5" width="32" height="32"><path d="M1 1l22 22M16.72 11.06a8.01 8.01 0 0 1 1.22 3.94M12 20a8 8 0 0 0 5.58-3.42M8.56 7.72A8 8 0 0 0 4 12m0 0a8 8 0 0 0 1.06 4M4.93 4.93l14.14 14.14"/></svg>
+        <p class="title">设备未连接</p>
+        <p class="sub">请先在"设备"页面连接耳机</p>
+      </div>
+    `;
+  }
+  const scenarios = [{id:'meeting',label:'会议'},{id:'learning',label:'学习'},{id:'office',label:'办公'},{id:'daily',label:'日常'}];
+  let html = `<div class="pill-group">${scenarios.map(s =>
+    `<button class="pill ${state.scenario === s.id ? 'active' : ''}" onclick="setScenario('${s.id}')">${s.label}</button>`
+  ).join('')}</div>`;
+
+  html += `<div class="waveform" id="waveform">${bars.map((h, i) => `<div class="wave-bar ${state.recording ? 'active' : ''}" style="height:${h}px"></div>`).join('')}</div>`;
+
+  const mins = Math.floor(state.duration / 60);
+  const secs = Math.floor(state.duration % 60);
+  html += `<div class="timer">${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}</div>`;
+  html += `<div class="timer-sub">${scenarios.find(s => s.id === state.scenario).label}${state.recording ? ' · 录制中' : ''}</div>`;
+
+  if (state.recording) {
+    html += `<div class="metrics">
+      <div class="metric"><div class="metric-val">${Math.round(40 + Math.random()*20)}</div><div class="metric-label">音量</div></div>
+      <div style="width:1px;height:32px;background:rgba(55,65,81,0.5)"></div>
+      <div class="metric"><div class="metric-val">${Math.round(20 + Math.random()*15)}</div><div class="metric-label">噪声</div></div>
+      <div style="width:1px;height:32px;background:rgba(55,65,81,0.5)"></div>
+      <div class="metric"><div class="metric-val">${Math.round(75 + Math.random()*15)}</div><div class="metric-label">清晰度</div></div>
+    </div>`;
+  }
+
+  if (state.processing) {
+    html += `<div class="progress-card">
+      <div class="progress-row"><div class="dot"></div><span class="progress-msg">${getPhaseMsg(state.progress)}</span><span class="progress-pct">${Math.round(state.progress)}%</span></div>
+      <div class="progress-bg"><div class="progress-fill" style="width:${state.progress}%"></div></div>
+    </div>`;
+  }
+
+  if (state.recording) {
+    html += `<button class="btn btn-outline" style="margin-top:12px" onclick="stopRecording()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>结束聆听</button>`;
+  } else if (!state.processing) {
+    html += `<button class="btn btn-white" onclick="showPermissionDialog()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>开始聆听</button>`;
+  }
+
+  return html;
+}
+
+function getPhaseMsg(p) {
+  if (p < 25) return '正在转写语音...';
+  if (p < 50) return '转写完成，正在翻译...';
+  if (p < 75) return '翻译完成，正在生成摘要...';
+  return '处理完成';
+}
+
+function setScenario(id) { state.scenario = id; render(); }
+
+function showPermissionDialog() {
+  showOverlay(`<div class="modal-overlay" onclick="event.target===this&&hideOverlay()">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">${ICONS.shield} 录音权限确认</div>
+      <div class="modal-subtitle">Privacy & Permission</div>
+      <div class="modal-items">
+        开始聆听后，系统将：<br>
+        · 通过麦克风采集音频<br>
+        · 在本地设备进行语音处理<br>
+        · 不会将原始音频上传至云端<br>
+        · 数据将在设定时间后自动清除
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-sm" onclick="hideOverlay()">拒绝</button>
+        <button class="btn btn-white btn-sm" onclick="confirmRecording()">允许并开始</button>
+      </div>
+    </div>
+  </div>`);
+}
+
+function confirmRecording() {
+  hideOverlay();
+  state.recording = true;
+  state.duration = 0;
+  timerInterval = setInterval(() => {
+    state.duration += 0.1;
+    bars = Array.from({length:40}, (_,i) => Math.abs(Math.sin(i*0.3 + state.duration*3)) * 40 + 4);
+    render();
+  }, 100);
+}
+
+function stopRecording() {
+  clearInterval(timerInterval);
+  state.recording = false;
+  startProcessing();
+}
+
+function startProcessing() {
+  state.processing = true;
+  state.progress = 0;
+  render();
+  const interval = setInterval(() => {
+    state.progress += Math.random() * 8 + 2;
+    if (state.progress >= 100) {
+      state.progress = 100;
+      clearInterval(interval);
+      setTimeout(() => {
+        state.processing = false;
+        state.records.unshift({
+          id: Date.now().toString(),
+          scenario: state.scenario,
+          duration: state.duration,
+          time: new Date().toISOString(),
+          original: getMockText(state.scenario).original,
+          translated: getMockText(state.scenario).translated,
+          summary: getMockText(state.scenario).summary,
+          processingMs: Math.round(2000 + Math.random() * 2000)
+        });
+        state.duration = 0;
+        bars = Array(40).fill(4);
+        showPrivacyTipToast();
+        render();
+      }, 500);
+    }
+    render();
+  }, 200);
+}
+
+function getMockText(scenario) {
+  const texts = {
+    meeting: { original: '今天我们讨论一下Q1的产品规划。首先，关于AI耳机的语音识别功能，我们需要在准确率上达到95%以上的目标。', translated: 'Today we discussed the Q1 product roadmap. First, regarding the AI earbuds\' speech recognition feature, we need to achieve 95%+ accuracy.', summary: '会议讨论了Q1产品规划，重点包括语音识别准确率目标95%以上。' },
+    learning: { original: 'Hello, today we will learn about artificial intelligence and its applications. AI has transformed many industries from healthcare to finance.', translated: '今天我们将学习人工智能及其应用。AI已经改变了从医疗到金融的许多行业。', summary: '本节课程介绍了AI基础知识及其在多个行业的应用。' },
+    office: { original: '播放音乐，音量调到60%。打开降噪模式。设置定时器25分钟，我要专注工作。', translated: 'Play music, set volume to 60%. Turn on noise cancellation mode. Set a timer for 25 minutes.', summary: '办公场景：音乐播放、降噪模式、专注定时器。' },
+    daily: { original: '今天天气真不错，适合出去走走。早上去了公园，空气很好，跑了两圈。', translated: 'The weather is nice today, perfect for a walk. I went to the park in the morning, ran two laps.', summary: '日常记录：晨跑公园，充实的一天。' }
+  };
+  return texts[scenario] || texts.daily;
+}
+
+function showPrivacyTipToast() {
+  showOverlay(`<div class="toast" id="privacyToast">
+    <button class="toast-close" onclick="hideOverlay()">${ICONS.x}</button>
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      ${ICONS.shield.replace('width="16"','width="14"').replace('height="16"','height="14"')}
+      <div>
+        <div class="toast-title" style="color:#4ade80">隐私提示</div>
+        <div class="toast-text">您的音频数据已在本地处理完毕，未上传至任何云端服务器。</div>
+      </div>
+    </div>
+  </div>`);
+  setTimeout(hideOverlay, 4000);
+}
+
+// ---- Page: Results ----
+function pageResults() {
+  let html = `<h2>处理记录</h2>`;
+  if (state.records.length === 0) {
+    html += `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1f2937" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p class="title">暂无处理记录</p>
+      <p class="sub">在"聆听"页面开始录音后自动生成记录</p>
+    </div>`;
+    return html;
+  }
+  const labels = {meeting:'会议',learning:'学习',office:'办公',daily:'日常'};
+  state.records.forEach(r => {
+    const d = new Date(r.time);
+    const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const dur = r.duration < 60 ? `${Math.round(r.duration)}秒` : `${Math.floor(r.duration/60)}分${Math.round(r.duration%60)}秒`;
+    html += `<div class="record-item" onclick="toggleRecord('${r.id}')">
+      <div class="record-title">${dateStr}</div>
+      <div class="record-sub">${labels[r.scenario]} · ${dur} · ${r.processingMs}ms</div>
+    </div>`;
+    if (r.expanded) {
+      html += `<div style="padding:0 0 12px 12px">
+        <div class="result-card"><div class="result-title">转写</div><div class="result-text">${r.original}</div></div>
+        <div class="result-card"><div class="result-title">翻译</div><div class="result-text">${r.translated}</div></div>
+        <div class="result-card"><div class="result-title">摘要</div><div class="result-text">${r.summary}</div></div>
+        <div class="export-btns">
+          <button class="export-btn" onclick="event.stopPropagation();alert('已复制到剪贴板')">${ICONS.copy} 复制文本</button>
+          <button class="export-btn" onclick="event.stopPropagation();alert('文件已下载')">${ICONS.download} 导出文件</button>
+        </div>
+      </div>`;
+    }
+  });
+  return html;
+}
+
+function toggleRecord(id) {
+  const r = state.records.find(x => x.id === id);
+  if (r) r.expanded = !r.expanded;
+  render();
+}
+
+// ---- Page: Report ----
+function pageReport() {
+  let html = `<h2>性能报告</h2>`;
+  if (state.records.length === 0) {
+    html += `<div class="empty-state">
+      ${ICONS.chart.replace('width="32"','width="32"').replace('height="32"','height="32"')}
+      <p class="title">暂无报告数据</p>
+      <p class="sub">完成至少一次聆听后将自动生成性能报告</p>
+    </div>`;
+    return html;
+  }
+  const avgMs = Math.round(state.records.reduce((a,r) => a + r.processingMs, 0) / state.records.length);
+  const acc = Math.round(88 + Math.random() * 8);
+  const circumference = 2 * Math.PI * 36;
+  const offset = circumference - (acc / 100) * circumference;
+
+  html += `<div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 平均响应</div>
+      <div class="stat-value">${avgMs}</div>
+      <div class="stat-unit">毫秒</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> 处理次数</div>
+      <div class="stat-value">${state.records.length}</div>
+      <div class="stat-unit">次</div>
+    </div>
+  </div>`;
+
+  html += `<div class="card">
+    <div class="card-row" style="padding:16px">
+      <div class="accuracy-circle">
+        <svg width="96" height="96" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
+          <circle cx="40" cy="40" r="36" fill="none" stroke="${acc >= 90 ? '#4ade80' : '#facc15'}" stroke-width="4" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+        </svg>
+        <div class="accuracy-text"><div class="pct">${acc}%</div><div class="label">准确率</div></div>
+      </div>
+      <div style="margin-left:24px;flex:1">
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;color:#6b7280;margin-bottom:4px">AI处理耗时</div>
+          <div style="font-size:13px;color:#d1d5db;font-family:monospace">${Math.round(avgMs * 1.5)} ms</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6b7280;margin-bottom:4px">连接稳定性</div>
+          <div style="font-size:13px;color:#d1d5db;font-family:monospace">99.5%</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Response time chart
+  html += `<div class="card" style="padding:12px 16px"><div style="font-size:10px;color:#6b7280;letter-spacing:0.1em;margin-bottom:12px">响应时长趋势</div>`;
+  const maxVal = Math.max(...state.records.map(r => r.processingMs));
+  state.records.forEach((r, i) => {
+    const pct = (r.processingMs / maxVal) * 100;
+    html += `<div class="chart-bar-row">
+      <div class="chart-bar-label"><span>第${i+1}次</span><span class="val">${r.processingMs}ms</span></div>
+      <div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Suggestions
+  html += `<div class="card" style="padding:12px 16px">
+    <div style="font-size:10px;color:#60a5fa;letter-spacing:0.1em;margin-bottom:12px">优化建议</div>
+    <div class="suggestion-item">系统运行良好，可尝试更高精度模式</div>
+    <div class="suggestion-item">定期清理历史数据以保持性能</div>
+    <div class="suggestion-item">在安静环境下使用可获得更好的识别效果</div>
+  </div>`;
+
+  return html;
+}
+
+// ---- Page: Settings ----
+function pageSettings() {
+  const t = state.toggles;
+  return `
+    <h2>设置</h2>
+    <div class="section-label">设备</div>
+    <div class="card">
+      <div class="card-row"><span class="card-label">${ICONS.headphones} 当前设备</span><span class="card-value">${state.connected ? state.device.name : '未连接'}</span></div>
+      <div class="card-row"><span class="card-label">${ICONS.wifi} 自动重连</span><button class="toggle ${t.autoReconnect?'on':'off'}" onclick="state.toggles.autoReconnect=!state.toggles.autoReconnect;render()"></button></div>
+    </div>
+    <div class="section-label">音频</div>
+    <div class="card">
+      <div class="card-row"><span class="card-label">翻译源语言</span><span class="card-value">英文</span></div>
+      <div class="card-row"><span class="card-label">翻译目标语言</span><span class="card-value">中文</span></div>
+    </div>
+    <div class="section-label">隐私与安全</div>
+    <div class="card">
+      <div class="card-row"><span class="card-label">仅本地处理</span><button class="toggle ${t.localOnly?'on':'off'}" onclick="state.toggles.localOnly=!state.toggles.localOnly;render()"></button></div>
+      <div class="card-row"><span class="card-label">数据保留</span>
+        <select onchange="state.retention=Number(this.value)" style="background:transparent;font-size:12px;color:#6b7280;border:none;text-align:right">
+          <option value="7" ${state.retention===7?'selected':''}>7天</option>
+          <option value="30" ${state.retention===30?'selected':''}>30天</option>
+          <option value="90" ${state.retention===90?'selected':''}>90天</option>
+        </select>
+      </div>
+      <div class="card-row"><span class="card-label">使用分析</span><button class="toggle ${t.analytics?'on':'off'}" onclick="state.toggles.analytics=!state.toggles.analytics;render()"></button></div>
+      <div class="card-row"><button onclick="if(confirm('确定要清除所有隐私数据吗？')){state.records=[];alert('隐私数据已清除')};render()" style="background:none;border:none;color:#f87171;font-size:12px;cursor:pointer;width:100%;text-align:left;padding:0">立即清除所有数据</button></div>
+    </div>
+    <div class="section-label">关于</div>
+    <div class="card">
+      <div class="card-row"><span class="card-label">名称</span><span class="card-value">ANKERHUB</span></div>
+      <div class="card-row"><span class="card-label">版本</span><span class="card-value" style="font-family:monospace">v1.0.0</span></div>
+      <div class="card-row"><span class="card-label">架构</span><span class="card-value">设备模拟 + AI处理 + UI</span></div>
+      <div class="card-row"><span class="card-label">通信协议</span><span class="card-value">REST API + SSE</span></div>
+    </div>
+  `;
+}
+
+// Overlay
+function showOverlay(html) {
+  document.getElementById('overlay').innerHTML = html;
+}
+function hideOverlay() {
+  document.getElementById('overlay').innerHTML = '';
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
