@@ -1,6 +1,6 @@
 """Performance report routes"""
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -93,3 +93,14 @@ async def get_session_history(
         ],
         "total": len(sessions),
     }
+
+
+@router.delete("/clear")
+async def clear_user_data(db: AsyncSession = Depends(get_db)):
+    """Clear all user data (sessions, metrics, events)."""
+    await db.execute(delete(PerformanceMetric))
+    await db.execute(delete(SessionRecord))
+    # Keep DeviceEvent for audit trail, but clear non-essential ones
+    await db.execute(delete(DeviceEvent).where(DeviceEvent.event_type != 'connected'))
+    await db.commit()
+    return {"message": "用户数据已清除"}

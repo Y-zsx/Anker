@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Mic, MicOff, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, AlertTriangle, Shield, X, Check } from 'lucide-react';
 
 const SCENARIOS = [
   { id: 'meeting', label: '会议' },
@@ -10,9 +10,19 @@ const SCENARIOS = [
 ];
 
 export default function PageListen({ onProcessed }: { onProcessed: () => void }) {
-  const { deviceState, audioState, selectedScenario, startRecording, stopRecording, processAI, isProcessing, processingStatus } = useApp();
+  const { deviceState, audioState, selectedScenario, startRecording, stopRecording, processAI, isProcessing, processingStatus, resetAudioState } = useApp();
   const [localScenario, setLocalScenario] = useState(selectedScenario);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [showPrivacyTip, setShowPrivacyTip] = useState(false);
   const animRef = useRef<number>();
+  const pendingScenarioRef = useRef<string>('meeting');
+
+  // Reset audio state when entering this page (after returning from results)
+  useEffect(() => {
+    if (!audioState.is_recording) {
+      resetAudioState();
+    }
+  }, []);
 
   // Waveform animation
   const [bars, setBars] = useState<number[]>(() => Array.from({ length: 40 }, () => 4));
@@ -40,13 +50,23 @@ export default function PageListen({ onProcessed }: { onProcessed: () => void })
   useEffect(() => {
     if (prevRecordingRef.current && !audioState.is_recording && audioState.duration > 2) {
       // Recording just finished with content, process it
-      processAI(localScenario).then(() => onProcessed());
+      processAI(localScenario).then(() => {
+        setShowPrivacyTip(true);
+        setTimeout(() => setShowPrivacyTip(false), 4000);
+        onProcessed();
+      });
     }
     prevRecordingRef.current = audioState.is_recording;
   }, [audioState.is_recording, audioState.duration]);
 
   const handleStart = async () => {
-    await startRecording(localScenario);
+    pendingScenarioRef.current = localScenario;
+    setShowPermissionDialog(true);
+  };
+
+  const handleConfirmRecording = async () => {
+    setShowPermissionDialog(false);
+    await startRecording(pendingScenarioRef.current);
   };
 
   const handleStop = async () => {
@@ -74,6 +94,69 @@ export default function PageListen({ onProcessed }: { onProcessed: () => void })
 
   return (
     <div className="flex flex-col h-full px-5 py-6">
+      {/* Permission Dialog */}
+      {showPermissionDialog && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-gray-900 rounded-t-3xl p-6 pb-8 animate-slide-up">
+            <div className="w-8 h-1 bg-gray-700 rounded-full mx-auto mb-5" />
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">录音权限确认</p>
+                <p className="text-[10px] text-gray-500">Privacy & Permission</p>
+              </div>
+            </div>
+            <div className="space-y-2 mb-6">
+              <p className="text-xs text-gray-300">开始聆听后，系统将：</p>
+              <p className="text-[11px] text-gray-400">· 通过麦克风采集音频</p>
+              <p className="text-[11px] text-gray-400">· 在本地设备进行语音处理</p>
+              <p className="text-[11px] text-gray-400">· 不会将原始音频上传至云端</p>
+              <p className="text-[11px] text-gray-400">· 数据将在设定时间后自动清除</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPermissionDialog(false)}
+                className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-xl text-sm active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                拒绝
+              </button>
+              <button
+                onClick={handleConfirmRecording}
+                className="flex-1 py-3 bg-white text-black rounded-xl text-sm font-medium active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                允许并开始
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy Tip Toast */}
+      {showPrivacyTip && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-40px)] max-w-sm">
+          <div className="bg-gray-900/95 backdrop-blur-sm border border-gray-800/50 rounded-2xl p-4 shadow-2xl">
+            <div className="flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-white font-medium">隐私提示</p>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  您的音频数据已在本地处理完毕，未上传至任何云端服务器。
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPrivacyTip(false)}
+                className="ml-auto shrink-0"
+              >
+                <X className="w-3.5 h-3.5 text-gray-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Scenario pills */}
       <div className="flex gap-1.5 mb-8">
         {SCENARIOS.map((s) => (

@@ -2,39 +2,41 @@ import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import PhoneFrame from './components/PhoneFrame';
 import TabBar from './components/TabBar';
+import DisconnectModal from './components/DisconnectModal';
 import PageDevice from './pages/PageDevice';
 import PageListen from './pages/PageListen';
 import PageResults from './pages/PageResults';
 import PageSettings from './pages/PageSettings';
+import PageReport from './pages/PageReport';
 
-type Tab = 'device' | 'listen' | 'results' | 'settings';
+type Tab = 'device' | 'listen' | 'results' | 'report' | 'settings';
 
 function AppContent() {
   const [tab, setTab] = useState<Tab>('device');
-  const { deviceState, fetchReport } = useApp();
+  const { deviceState, showDisconnectModal, dismissDisconnectModal, connectDevice, fetchReport } = useApp();
 
-  // Initial data load
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
 
-  // Guarded tab switching: require device for listen/results
-  const switchTab = (t: Tab) => {
-    if ((t === 'listen' || t === 'results') && !deviceState.connected) {
-      setTab('device');
-      return;
+  const handleReconnect = () => {
+    dismissDisconnectModal();
+    setTab('device');
+    if (deviceState.device?.id) {
+      connectDevice(deviceState.device.id);
     }
-    setTab(t);
   };
 
   const renderPage = () => {
     switch (tab) {
       case 'device':
-        return <PageDevice onConnected={() => switchTab('listen')} />;
+        return <PageDevice />;
       case 'listen':
-        return <PageListen onProcessed={() => switchTab('results')} />;
+        return <PageListen onProcessed={() => setTab('results')} />;
       case 'results':
         return <PageResults />;
+      case 'report':
+        return <PageReport />;
       case 'settings':
         return <PageSettings />;
     }
@@ -60,8 +62,17 @@ function AppContent() {
         </div>
 
         {/* Bottom tab bar */}
-        <TabBar activeTab={tab} onTabChange={switchTab} />
+        <TabBar activeTab={tab} onTabChange={setTab} />
       </div>
+
+      {/* Disconnect modal */}
+      {showDisconnectModal && deviceState.device && (
+        <DisconnectModal
+          deviceName={deviceState.device.name}
+          onReconnect={handleReconnect}
+          onDismiss={dismissDisconnectModal}
+        />
+      )}
     </PhoneFrame>
   );
 }

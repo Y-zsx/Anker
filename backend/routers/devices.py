@@ -23,6 +23,12 @@ async def list_devices():
     return {"devices": sim.list_available_devices()}
 
 
+# Backward-compatible alias for frontend
+@router.get("/devices")
+async def list_devices_compat():
+    return await list_devices()
+
+
 @router.get("/status")
 async def get_device_status():
     """Get current device connection status."""

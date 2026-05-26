@@ -28,8 +28,12 @@ export const api = {
   getAIResult: () => fetchJson<any>('/ai/result'),
   getAIHistory: () => fetchJson<{ history: any[] }>('/ai/history'),
 
+  // Sessions (records)
+  getSessions: () => fetchJson<{ sessions: any[]; total: number }>('/report/sessions'),
+
   // Report
   getReport: () => fetchJson<any>('/report'),
+  clearData: () => fetchJson<any>('/report/clear', { method: 'DELETE' }),
 
   // Health
   health: () => fetchJson<any>('/health'),

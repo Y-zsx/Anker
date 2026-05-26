@@ -116,6 +116,7 @@ class ErrorResponse(BaseModel):
 SCENARIOS = {
     "meeting": {
         "scenario": "meeting",
+        "label": "会议模式",
         "duration": 120,
         "text": (
             "今天我们讨论一下Q1的产品规划。首先，关于AI耳机的语音识别功能，"
@@ -128,6 +129,7 @@ SCENARIOS = {
     },
     "learning": {
         "scenario": "learning",
+        "label": "学习模式",
         "duration": 60,
         "text": (
             "Hello, today we will learn about artificial intelligence and its applications. "
@@ -141,6 +143,7 @@ SCENARIOS = {
     },
     "office": {
         "scenario": "office",
+        "label": "办公模式",
         "duration": 30,
         "text": (
             "播放音乐，音量调到60%。打开降噪模式。设置定时器25分钟，我要专注工作。"
@@ -149,6 +152,7 @@ SCENARIOS = {
     },
     "daily": {
         "scenario": "daily",
+        "label": "日常模式",
         "duration": 300,
         "text": (
             "今天天气真不错，适合出去走走。早上去了公园，空气很好，跑了两圈。"

@@ -70,6 +70,13 @@ async def health():
     }
 
 
+# Backward-compatible alias: frontend calls /api/devices, router provides /api/device/list
+@app.get("/api/devices")
+async def list_devices_compat():
+    from backend.routers.devices import list_devices
+    return await list_devices()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

@@ -77,14 +77,17 @@ interface AppState {
   result: TranscriptionResult | null;
   report: ReportData | null;
   selectedScenario: string;
+  showDisconnectModal: boolean;
 
   connectDevice: (id: string) => Promise<void>;
   disconnectDevice: () => Promise<void>;
+  dismissDisconnectModal: () => void;
   startRecording: (scenario: string) => Promise<void>;
   stopRecording: () => Promise<void>;
   processAI: (scenario: string) => Promise<void>;
   fetchReport: () => Promise<void>;
   resetResult: () => void;
+  resetAudioState: () => void;
 }
 
 const defaultDeviceState: DeviceState = {
@@ -124,6 +127,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<TranscriptionResult | null>(null);
   const [report, setReport] = useState<ReportData | null>(null);
   const [selectedScenario, setSelectedScenario] = useState('meeting');
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const wasConnectedRef = useRef(false);
+
+  // Detect unexpected disconnection
+  useEffect(() => {
+    if (deviceState.connected) {
+      wasConnectedRef.current = true;
+    } else if (wasConnectedRef.current && deviceState.phase === 'idle') {
+      // Was connected, now disconnected unexpectedly
+      setShowDisconnectModal(true);
+    }
+  }, [deviceState.connected, deviceState.phase]);
 
   // ---- Real-time timer: ticks every 100ms when recording ----
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -168,10 +183,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disconnectDevice = useCallback(async () => {
+    wasConnectedRef.current = false;
     try {
       await api.disconnectDevice();
       setDeviceState(defaultDeviceState);
     } catch { /* ignore */ }
+  }, []);
+
+  const dismissDisconnectModal = useCallback(() => {
+    setShowDisconnectModal(false);
   }, []);
 
   const startRecording = useCallback(async (scenario: string) => {
@@ -250,6 +270,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProcessingStatus(defaultProcessingStatus);
   }, []);
 
+  const resetAudioState = useCallback(() => {
+    stopTimer();
+    setAudioState({
+      is_recording: false,
+      duration: 0,
+      sample_rate: 48000,
+      volume_level: 0,
+      noise_level: 25,
+      clarity_score: 80,
+      text: '',
+    });
+  }, [stopTimer]);
+
   return (
     <AppContext.Provider
       value={{
@@ -261,13 +294,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         result,
         report,
         selectedScenario,
+        showDisconnectModal,
         connectDevice,
         disconnectDevice,
+        dismissDisconnectModal,
         startRecording,
         stopRecording,
         processAI,
         fetchReport,
         resetResult,
+        resetAudioState,
       }}
     >
       {children}
